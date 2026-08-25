@@ -2,7 +2,7 @@
 title: ブログ
 description: ブログ投稿する方法を学びます。
 weight: 30
-default_lang_commit: 5336b383467f539be5f01645182a1c345797127e
+default_lang_commit: 38e36ae231c523f9e54499ad6ca05de7c49501c5
 ---
 
 [OpenTelemetry ブログ](/blog/)は OpenTelemetry に関連する可能性のある、新機能、コミュニティレポートそしてニュースを発信します。
@@ -19,16 +19,20 @@ OpenTelemetry ウェブサイトのメンテナーと承認者はプロジェク
 
 ## ソーシャルメディアコンテンツのリクエスト {#social-media-content-request}
 
-ブログ記事以外のコンテンツをOpenTelemetryプロジェクトのソーシャルメディアチャンネルで公開するようにリクエストしたい場合、[このフォームを使用してください](https://github.com/open-telemetry/community/issues/new?template=social-media-request.yml)。
+ブログではなく OpenTelemetry のソーシャルメディアチャンネルでの公開をリクエストするには、[ソーシャルメディアリクエストを提出][submit a social media request]してください。
+
+[submit a social media request]: https://github.com/open-telemetry/community/issues/new?template=social-media-request.yml
 
 ## ブログ記事を提出する前に {#before-submitting-a-blog-post}
 
 ブログ記事は商業的な内容であってはならず、OpenTelemetry コミュニティに全体に適用される独自の内容で作成する必要があります。
-ブログ記事は [Social Media Guide](https://github.com/open-telemetry/community/blob/main/social-media-guide.md) に記載されている方針に従ってください。
+ブログ記事は [Social Media Guide][] に記載されている方針に従ってください。
 
-### GitHub リポジトリへのリンク
+[Social Media Guide]: https://github.com/open-telemetry/community/blob/main/social-media-guide.md
 
-ブログ記事は、不安定な GitHub `blob`/`tree` リンクを防止するために markdownlint (`gh-url-hash`) によってチェックされます。
+### GitHub リポジトリへのリンク {#linking-to-github-repositories}
+
+ブログ記事は、不安定な GitHub `blob`/`tree` リンクを防止するために [markdownlint によってチェック][checked by markdownlint]されます（`gh-url-hash`）。
 
 チェックにより問題が報告された場合、次のように修正してください。
 
@@ -50,17 +54,22 @@ OpenTelemetry ウェブサイトのメンテナーと承認者はプロジェク
 
 - ベンダー製品の宣伝
 
-もし、ブログ投稿がこの適切な内容のリストに沿っているのであれば、次の詳細と一緒に[イシューを起票](https://github.com/open-telemetry/opentelemetry.io/issues/new?title=New%20Blog%20Post:%20%3Ctitle%3E)してください。
+もし、ブログ投稿がこの適切な内容のリストに沿っているのであれば、**必ず**最初に次の詳細と一緒に[イシューを起票](https://github.com/open-telemetry/opentelemetry.io/issues/new?template=BLOG_POST.yml)してください。
 
 - ブログ投稿のタイトル
 - 簡潔な説明とブログ投稿の概要
 - 該当する場合、ブログ記事で使用する技術のリスト。すべてオープンソースであることを確認し、CNCF プロジェクトでないものより CNCF プロジェクトが好まれます（例：トレースの可視化には Jaeger、メトリクスの可視化には Prometheus を使用）
-- ブログ記事に関連する [SIG](https://github.com/open-telemetry/community/) の名前
-- PR のレビューを手伝う、SIG のスポンサー（メンテナーまたは承認者）の名前。理想的にはスポンサーは異なる企業であることが望ましい
+- ブログ記事のスポンサーを引き受けてくれる [SIG](https://github.com/open-telemetry/community/) の名前。
+  **SIG スポンサーは必須です。**
+- Comms SIG が記事をレビューする前に、最初のレビューを担当する、SIG のスポンサー（メンテナーまたは承認者）の名前。
+  スポンサーは記事の執筆者とは異なる企業であることが**必須です**。
+
+**プルリクエストを提出する前にイシューを起票することは必須です。**
+受理されたイシューなしに提出されたブログ記事のプルリクエストは、レビューなしにクローズされることがあります。
 
 SIG Communication のメンテナーがブログ記事が受け入れられるのに必要な要件を満たしていることを確認します。
-最初のイシューの詳細に、SIG やスポンサーの名前を書けない場合は、スポンサーを求めるために連絡できる適切な SIG を紹介します。
-スポンサーを持つことは任意ですが、スポンサーを持つことでブログポストをより早くレビューや承認を得る可能性が高まります。
+SIG スポンサーは、Comms SIG が記事を確認する前にレビューを完了しなければなりません。
+記事の執筆者は、ブログポストのスポンサーを見つける責任があります。
 
 もしイシューが必要としているものをすべて揃っている場合は、メンテナーが確認し次の手順に進めてブログ記事を投稿できることを通知します。
 
@@ -84,13 +93,13 @@ SIG Communication のメンテナーがブログ記事が受け入れられる�
 1. リポジトリルートから以下のコマンドを実行してください
 
    ```sh
-   npx hugo new content/en/blog/$(date +%Y)/short-name-for-post.md
+   npm exec --no -- hugo new content/en/blog/$(date +%Y)/short-name-for-post.md
    ```
 
    投稿に画像やその他のアセットが含まれている場合、次のコマンドを実行してください。
 
    ```sh
-   npx hugo new content/en/blog/$(date +%Y)/short-name-for-post/index.md
+   npm exec --no -- hugo new content/en/blog/$(date +%Y)/short-name-for-post/index.md
    ```
 
 2. 前のコマンドで提供したパスのマークダウンファイルを編集してください。このファイルは、[archetypes](https://github.com/open-telemetry/opentelemetry.io/tree/main/archetypes/)配下のブログ記事スターターから初期化されます。
@@ -137,3 +146,13 @@ OpenTelemetryのブログ記事を他のプラットフォームで共有した�
   - プラットフォームがサポートしている場合は、OpenTelemetryブログ記事を指す正規URLタグを設定する。
 
 これにより、適切な帰属が確保され、SEOのベストプラクティスをサポートし、コンテンツの重複を回避できます。
+
+## 古いブログは更新されません {#old-blogs-are-not-updated}
+
+ブログ記事は歴史的なものとみなされ、1年程度経過すると更新されません（サイトのビルドを維持するために必要な変更を除く）。
+古いブログ記事には、コンテンツが古くなっている可能性があり一部のリンクが無効になっている可能性があることを読者に警告するバナーが上部に表示されます。
+
+また、古い記事は [lint もリンクチェックも行われない][pr-checks]ことに注意してください。
+
+[pr-checks]: ../pr-checks/#checks
+[checked by markdownlint]: ../pr-checks/#markdown-linter

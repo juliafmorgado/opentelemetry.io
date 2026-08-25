@@ -7,6 +7,7 @@ what-next: >
   変更の提出方法の詳細については、[コンテンツの提出](../pull-requests)を参照してください。
 weight: 60
 default_lang_commit: 4f9b6de11b3a5062c94790b1ca2d7b0fb05114a5
+drifted_from_default: true
 cSpell:ignore: TOCSS
 ---
 
@@ -29,7 +30,7 @@ cSpell:ignore: TOCSS
     また、次の形式のリンクを開くこともできます。
     `https://gitpod.io#https://github.com/YOUR_GITHUB_ID/opentelemetry.io`
 
-    > **注記**: このリポジトリで作業するための権限がある場合や、単に内容を確認したい場合は、
+    > **Note**: このリポジトリで作業するための権限がある場合や、単に内容を確認したい場合は、
     > <https://gitpod.io/#https://github.com/open-telemetry/opentelemetry.io> を開いてください。
 
 Gitpod はリポジトリ固有のパッケージを自動的にインストールします。

@@ -2,9 +2,8 @@
 title: SDKによるテレメトリーの管理
 weight: 12
 aliases: [exporters]
-default_lang_commit: 4edfbfc2ff38123678ca63eca95de94ede457623
-drifted_from_default: true
-cSpell:ignore: Interceptable Logback okhttp
+default_lang_commit: 73ebe319188f1d3800b62c349d9f39cf9c21e657
+cSpell:ignore: data_point inflight Interceptable okhttp
 ---
 
 <!-- markdownlint-disable blanks-around-fences -->
@@ -1251,6 +1250,7 @@ io.opentelemetry.sdk.trace.export.BatchSpanProcessor = io.opentelemetry.extensio
 
 - [センダー](#senders)：異なるHTTP / gRPCクライアントライブラリの抽象化
 - OTLPエクスポーターの[認証](#authentication)オプション
+- エクスポーターやその他のSDKコンポーネントが発行する[SDK自己監視メトリクス](#sdk-self-monitoring-metrics)
 
 #### Senders {#senders}
 
@@ -1258,7 +1258,7 @@ OTLPエクスポーターは、HTTPおよびgRPCリクエストを実行する�
 Javaエコシステムのすべての使用例を満たす単一のHTTP / gRPCクライアントライブラリはありません。
 
 - Java 11+は組み込みの`java.net.http.HttpClient`を提供しますが、`opentelemetry-java`はJava 8+ユーザーをサポートする必要があり、トレーラーヘッダーのサポートがないため`gRPC`経由でエクスポートするために使用できません
-- [OkHttp](https://square.github.io/okhttp/)はトレーラーヘッダーをサポートする強力なHTTPクライアントを提供しますが、kotlin標準ライブラリに依存しています
+- [OkHttp](https://lysine.dev/okhttp/)はトレーラーヘッダーをサポートする強力なHTTPクライアントを提供しますが、kotlin標準ライブラリに依存しています
 - [grpc-java](https://github.com/grpc/grpc-java)は、さまざまな[トランスポート実装](https://github.com/grpc/grpc-java#transport)を持つ独自の`ManagedChannel`抽象化を提供しますが、`http/protobuf`には適していません
 
 さまざまな使用例に対応するため、`opentelemetry-exporter-otlp`は内部の「sender」抽象化を使用し、アプリケーションの制約を反映するさまざまな実装を提供しています。
@@ -1378,8 +1378,143 @@ public class OtlpAuthenticationConfig {
 ```
 <!-- prettier-ignore-end -->
 
-### テスト {#testing}
+### SDK自己監視メトリクス {#sdk-self-monitoring-metrics}
 
-TODO: SDKのテストに利用可能なツールをドキュメント化
+Java SDKは、エクスポーター、スパンおよびログレコードプロセッサー、トレーサーおよびロガープロバイダー、周期的メトリクスリーダーの自己監視メトリクスを発行できます。
+スキーマの選択はOTLPエクスポーターとバッチスパンおよびログレコードプロセッサーに適用されます。
+その他のコンポーネントでは、使用される名前ではなく、自己監視自体が有効かどうかを制御します。
+
+OTLPエクスポータービルダーはデフォルトで自己監視に `GlobalOpenTelemetry.getMeterProvider()` を使用します。
+別のプロバイダーを使用するには、ビルダーで `setMeterProvider(...)` を呼び出してください。
+[ゼロコードSDK自動設定](../configuration/#zero-code-sdk-autoconfigure)は設定済みのSDK `MeterProvider` を自動的に供給します。
+
+プログラム的に構築したエクスポーターの場合、`setInternalTelemetryVersion(...)` に `InternalTelemetryVersion.LEGACY` または `InternalTelemetryVersion.LATEST` を渡してメトリクスのスキーマを選択します。
+ゼロコードSDK自動設定では、`otel.experimental.sdk.telemetry.version` を `legacy` または `latest` に設定します。
+デフォルトは `legacy` です。
+
+[宣言型設定](../configuration/#declarative-configuration)では、SDK自己監視テレメトリーはデフォルトで無効です。
+有効にするには、`instrumentation/development.java.otel_sdk.internal_telemetry_version` を `legacy` または `latest` に設定します。
+
+```yaml
+instrumentation/development:
+  java:
+    otel_sdk:
+      internal_telemetry_version: latest
+```
+
+以下の表は、各コンポーネントが発行するメトリクス名をまとめたものです。
+ダッシュは、そのスキーマがそのコンポーネントのメトリクスを定義していないことを示します。
+
+| コンポーネント            | `legacy`                                       | `latest`                                                                                                                                                                                                                                                                         |
+| ------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OTLPエクスポーター        | `otlp.exporter.seen`, `otlp.exporter.exported` | `otel.sdk.exporter.span.inflight`, `otel.sdk.exporter.span.exported`, `otel.sdk.exporter.metric_data_point.inflight`, `otel.sdk.exporter.metric_data_point.exported`, `otel.sdk.exporter.log.inflight`, `otel.sdk.exporter.log.exported`, `otel.sdk.exporter.operation.duration` |
+| `BatchSpanProcessor`      | `queueSize`, `processedSpans`                  | `otel.sdk.processor.span.queue.capacity`, `otel.sdk.processor.span.queue.size`, `otel.sdk.processor.span.processed`                                                                                                                                                              |
+| `BatchLogRecordProcessor` | `queueSize`, `processedLogs`                   | `otel.sdk.processor.log.queue.capacity`, `otel.sdk.processor.log.queue.size`, `otel.sdk.processor.log.processed`                                                                                                                                                                 |
+| `SdkTracerProvider`       | —                                              | `otel.sdk.span.started`, `otel.sdk.span.live`                                                                                                                                                                                                                                    |
+| `SdkLoggerProvider`       | —                                              | `otel.sdk.log.created`                                                                                                                                                                                                                                                           |
+| `PeriodicMetricReader`    | —                                              | `otel.sdk.metric_reader.collection.duration`                                                                                                                                                                                                                                     |
+
+`SimpleSpanProcessor` と `SimpleLogRecordProcessor` は常にセマンティック規約スキーマを使用し、それぞれ `otel.sdk.processor.span.processed` と `otel.sdk.processor.log.processed` を記録します。
+
+レガシーエクスポーターメトリクスには、`span`、`metric`、`log` のいずれかの値を持つ `type` 属性が含まれます。
+`otlp.exporter.exported` にはさらに `success` 属性も含まれます。
+
+`latest` の名前は[SDKメトリクスセマンティック規約](/docs/specs/semconv/otel/sdk-metrics/)に従います。
+エクスポーターメトリクスには `otel.component.type`、`otel.component.name`、`server.address`、`server.port` が含まれます。
+エクスポートの失敗時には `.exported` および `.duration` メトリクスに `error.type` が追加されますが、`.inflight` メトリクスには追加されません。
+`otel.sdk.exporter.operation.duration` メトリクスには、HTTPの場合は `http.response.status_code`、gRPCの場合は `rpc.grpc.status_code` も含まれます。
+
+レガシーメトリクスはSDKメトリクスセマンティック規約より前に作られたもので、既存ユーザーの動作を壊さないようにSDK自動設定のデフォルトとして維持されています。
+Java SDKは現在、これらの削除スケジュールを定義していません。
+
+### ベンチマーク {#benchmarks}
+
+SDKは [JMH](https://github.com/openjdk/jmh) のベンチマーク結果を [open-telemetry.github.io/opentelemetry-java/benchmarks/](https://open-telemetry.github.io/opentelemetry-java/benchmarks/) に公開しています。
+ベンチマークはノイズを最小化するために専用のベアメタルランナーを使用して、`main` への各コミットで実行されます。
+結果には、日付フィルタリングやシリーズ選択のためのツール、そしてベンチマークの対象と理由を Javadoc で詳しく説明しているベンチマークソースコードへのリンクが含まれています。
+
+現在のベンチマークは、3つのシグナルすべての **レコードパス** をカバーしています。
+これは、アプリケーションスレッドがスパンの開始/終了、メトリクスの計測、またはログの発行ごとに実行するホットパスです。
+
+| ベンチマーク                                 | ディメンション                                                |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| [`SpanRecordBenchmark`][span-record-src]     | スパンサイズ、並行スレッド数                                  |
+| [`MetricRecordBenchmark`][metric-record-src] | 計装種別 + 集約、集約時間性、カーディナリティ、並行スレッド数 |
+| [`LogRecordBenchmark`][log-record-src]       | ログレコードサイズ、並行スレッド数                            |
+
+> [!NOTE]
+>
+> **エクスポートパス**（バッチプロセッサーのフラッシュ、エクスポーターの I/O など）のベンチマークは計画中ですが、エクスポートはホットパス外で発生するため優先度は低くなっています。
 
 [JSONファイルエンコーディング]: /docs/specs/otel/protocol/file-exporter/#json-file-serialization
+[span-record-src]: https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk/all/src/jmh/java/io/opentelemetry/sdk/SpanRecordBenchmark.java
+[metric-record-src]: https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk/all/src/jmh/java/io/opentelemetry/sdk/MetricRecordBenchmark.java
+[log-record-src]: https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk/all/src/jmh/java/io/opentelemetry/sdk/LogRecordBenchmark.java
+
+### テスト {#testing}
+
+`io.opentelemetry:opentelemetry-sdk-testing` アーティファクトは、バックエンドにデータをエクスポートすることなく、コードによって生成されたテレメトリーをアサートするためのユーティリティを提供します。
+
+以下のコンポーネントが利用可能です。
+
+| クラス                                                                                                                                                                                  | 説明                                                                                                                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [OpenTelemetryExtension](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/junit5/OpenTelemetryExtension.html)                  | インメモリエクスポーターと W3C トレースコンテキスト伝搬を使用して `OpenTelemetrySdk` をセットアップし、`GlobalOpenTelemetry` として登録し、各テスト前にキャプチャしたすべてのテレメトリーをリセットする JUnit 5 エクステンション。 |
+| [OpenTelemetryRule](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/junit4/OpenTelemetryRule.html)                            | `OpenTelemetryExtension` の JUnit 4 版。`@ClassRule` としては使用できません。                                                                                                                                                      |
+| [OpenTelemetryAssertions](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/assertj/OpenTelemetryAssertions.html)               | `SpanData`、`MetricData`、`LogRecordData`、`Attributes`、`EventData` に対する OTel 対応の `assertThat()` オーバーロードで AssertJ を拡張します。`import static ...OpenTelemetryAssertions.assertThat` 経由で使用します。           |
+| [InMemorySpanExporter](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/exporter/InMemorySpanExporter.html)                    | エクスポートされたスパンをメモリにキャプチャします。                                                                                                                                                                               |
+| [InMemoryMetricReader](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/exporter/InMemoryMetricReader.html)                    | 集約されたメトリクスをメモリで読み取ります。                                                                                                                                                                                       |
+| [InMemoryLogRecordExporter](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/exporter/InMemoryLogRecordExporter.html)          | エクスポートされたログレコードをメモリにキャプチャします。                                                                                                                                                                         |
+| [TestClock](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/time/TestClock.html)                                              | テストで時間を制御するためのミュータブルな `Clock`。`SdkTracerProvider.builder().setClock(...)` に渡します。                                                                                                                       |
+| [TestSpanData](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/trace/TestSpanData.html)                                       | 実際の計装を実行せずにテストで `SpanData` インスタンスを構築するためのイミュータブルビルダー。                                                                                                                                     |
+| [TestLogRecordData](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/logs/TestLogRecordData.html)                              | テストで `LogRecordData` インスタンスを構築するためのイミュータブルビルダー。                                                                                                                                                      |
+| [SettableContextStorageProvider](https://www.javadoc.io/doc/io.opentelemetry/opentelemetry-sdk-testing/latest/io/opentelemetry/sdk/testing/context/SettableContextStorageProvider.html) | 実行時に `ContextStorage` を交換できる `ContextStorageProvider`。コンテキスト伝搬の動作をテストするのに便利です。                                                                                                                  |
+
+#### JUnit 5 {#junit-5}
+
+`OpenTelemetryExtension` は JUnit 5 の推奨される開始ポイントです。
+
+```java
+class CoolTest {
+  @RegisterExtension
+  static final OpenTelemetryExtension otelTesting = OpenTelemetryExtension.create();
+
+  private final Tracer tracer = otelTesting.getOpenTelemetry().getTracer("test");
+
+  @Test
+  void test() {
+    tracer.spanBuilder("name").startSpan().end();
+    assertThat(otelTesting.getSpans())
+        .satisfiesExactly(span -> assertThat(span).hasName("name"));
+  }
+}
+```
+
+`getSpans()`、`getMetrics()`、`getLogRecords()` で生のテレメトリーにアクセスできます。
+`assertTraces()` を使用すると `TracesAssert` を介したフルーエントなトレースレベルのアサーションが可能です。
+テレメトリーは各テスト前に自動的にリセットされます。
+テスト途中でリセットする場合は `clearSpans()`、`clearMetrics()`、`clearLogRecords()` が利用可能です。
+
+#### JUnit 4 {#junit-4}
+
+`OpenTelemetryRule` は JUnit 4 向けに同じ API を提供します。
+
+```java
+public class CoolTest {
+  @Rule public OpenTelemetryRule otelTesting = OpenTelemetryRule.create();
+
+  private Tracer tracer;
+
+  @Before
+  public void setUp() {
+    tracer = otelTesting.getOpenTelemetry().getTracer("test");
+  }
+
+  @Test
+  public void test() {
+    tracer.spanBuilder("name").startSpan().end();
+    assertThat(otelTesting.getSpans())
+        .satisfiesExactly(span -> assertThat(span).hasName("name"));
+  }
+}
+```

@@ -2,9 +2,8 @@
 title: 管理
 description: OpenTelemetry Collectorのデプロイメントを大規模に管理する方法
 weight: 23
-default_lang_commit: 3d179dbe1270b83aafff0d3b6aa3311afd482649 # patched
-drifted_from_default: true
-cSpell:ignore: hostmetrics opampsupervisor
+default_lang_commit: 453013b113080a48166f412215176d345d2bf958
+cSpell:ignore: opampsupervisor
 ---
 
 このドキュメントでは、OpenTelemetry コレクターのデプロイを大規模に管理する方法について説明します。
@@ -39,7 +38,9 @@ OpenTelemetryのコンテキストでは、タスク _4.ヘルスとパフォー
 [OpAMPの仕様][OpAMP specification]では、テレメトリーデータエージェントのフリート管理方法を定義しています。
 これらのエージェントは、[OpenTelemetry コレクター](/docs/collector/)、Fluent Bit、または他のエージェントを任意の組み合わせで使用できます。
 
-> **注意** 「エージェント」という用語は、ここではOpAMPに応答するOpenTelemetryコンポーネントの総称として使われています。
+> [!NOTE]
+>
+> 「エージェント」という用語は、ここではOpAMPに応答するOpenTelemetryコンポーネントの総称として使われています。
 > つまりコレクターはもちろん、SDKコンポーネントでもありえます。
 
 OpAMPは、HTTPとWebSocketでの通信をサポートするクライアント/サーバープロトコルです。
@@ -94,7 +95,7 @@ OpAMPスーパーバイザーが管理できるOpenTelemetryコレクターの�
 `opampsupervisor` バイナリは、OpenTelemetry コレクター [`cmd/opampsupervisor` タグが付いたリリース][tags]からダウンロード可能なアセットとして入手できます。
 OSとチップセットに基づいて命名されたアセットのリストがありますので、あなたの構成に合うものをダウンロードしてください。
 
-{{< tabpane text=true >}}。
+{{< tabpane text=true >}}
 
 {{% tab "Linux (AMD 64)" %}}
 
@@ -171,12 +172,10 @@ storage:
   directory: ./storage
 ```
 
-{{% alert color="primary" title="NOTE" %}}
-
-`$OTEL_COLLECTOR_BINARY` を実際のファイルパスに置き換えてください。
-たとえば、LinuxまたはmacOSでは、コレクターを `/usr/local/bin/` にインストールした場合、 `$OTEL_COLLECTOR_BINARY` を `/usr/local/bin/otelcol` に置き換えます。
-
-{{% /alert %}}
+> [!NOTE]
+>
+> `$OTEL_COLLECTOR_BINARY` を実際のファイルパスに置き換えてください。
+> たとえば、LinuxまたはmacOSでは、コレクターを `/usr/local/bin/` にインストールした場合、 `$OTEL_COLLECTOR_BINARY` を `/usr/local/bin/otelcol` に置き換えます。
 
 #### ステップ5 - OpAMPスーパーバイザーの実行 {#step-5---run-the-opamp-supervisor}
 
@@ -199,7 +198,7 @@ $ ./opampsupervisor --config=./supervisor.yaml
 
 ```yaml
 receivers:
-  hostmetrics:
+  host_metrics:
     collection_interval: 10s
     scrapers:
       cpu:
@@ -212,7 +211,7 @@ exporters:
 service:
   pipelines:
     metrics:
-      receivers: [hostmetrics]
+      receivers: [host_metrics]
       exporters: [debug]
 ```
 
